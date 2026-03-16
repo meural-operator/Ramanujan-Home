@@ -116,11 +116,18 @@ class FREnumerator(RelativeGCFEnumerator):
 
         print('Running PSLQ')
         pslq_results = []
-        # The expression PSLQ tries to find is
-        # (a + b * const) / (c + d * const) = val
-        # => a + b*const -c*val -d*const*val = 0
-        # The first two items are identical for all matches. The last two are calculated for each value
-        numer_items = [1] + [gen() for gen in self.constants_generator]
+        
+        # Expand target dimensions to include quadratic multi-dimensional cross-terms
+        # To find: (a + b*C1 + c*C2 + d*C1*C2) / (e + f*C1 + g*C2 + h*C1*C2) = val
+        consts = [gen() for gen in self.constants_generator]
+        numer_items = [1] + consts
+        
+        # Add combinations for multi-dimensional expansion
+        if len(consts) > 1:
+            for i in range(len(consts)):
+                for j in range(i, len(consts)):
+                    numer_items.append(consts[i] * consts[j])
+
         num_of_items = len(numer_items)
 
         for match, val, precision in precise_intermediate_results:

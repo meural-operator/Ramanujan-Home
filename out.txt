@@ -1,0 +1,17 @@
+E
+======================================================================
+ERROR: test_gpu_matches_cpu (tests.test_gpu_enumerators.TestGPUEfficientGCFEnumerator.test_gpu_matches_cpu)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\DIAT\ashish\ramanujan_machine\RamanujanMachine\tests\test_gpu_enumerators.py", line 21, in test_gpu_matches_cpu
+    gpu_enumerator = GPUEfficientGCFEnumerator(
+        lhs, poly_search_domain, [g_const_dict['zeta'](3)]
+    )
+TypeError: Can't instantiate abstract class GPUEfficientGCFEnumerator without an implementation for abstract method '_refine_results'
+
+----------------------------------------------------------------------
+Ran 1 test in 1.636s
+
+FAILED (errors=1)
+loading from zeta3.db
+initializing LHS dict: 1.6217665672302246

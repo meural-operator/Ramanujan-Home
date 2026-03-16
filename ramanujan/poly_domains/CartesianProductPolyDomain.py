@@ -3,6 +3,7 @@ from ..utils.utils import iter_series_items_from_compact_poly
 from itertools import product
 from copy import deepcopy
 from numpy import array_split
+import warnings
 
 CHECKPOINT_DUMP_SIZE = 5_000
 ALLOW_LOWER_DEGREE = False
@@ -11,10 +12,14 @@ ALLOW_LOWER_DEGREE = False
 class CartesianProductPolyDomain(AbstractPolyDomains):
     """
     This poly domain will generate all combinations for a(n) and b(n) coefficients without complex dependence between
-    the two
+    the two.
+    DEPRECATED: Using exhaustive Cartesian product for complex polynomials faces the curse of dimensionality.
+    Please use MCTSPolyDomain or ContinuousRelaxationDomain for large complex polynomial searches.
     """
     def __init__(self, a_deg, a_coef_range, b_deg, b_coef_range, an_leading_coef_positive=True,
                  only_balanced_degrees=False, use_strict_convergence_cond=False, *args, **kwargs):
+        warnings.warn("CartesianProductPolyDomain is deprecated for large searches and kept for fallback/testing. "
+                      "Consider using MCTSPolyDomain or AI-guided searches.", DeprecationWarning, stacklevel=2)
         """
         a_deg - an's polynomial degree
         a_coef_range - The coefficient range iterated for every coefficient in an

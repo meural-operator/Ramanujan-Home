@@ -1,11 +1,10 @@
 import sympy
-from sympy.core.compatibility import with_metaclass
 from sympy.core.singleton import Singleton
 from sympy.core import NumberSymbol
 import mpmath
 
 
-class Khinchin(with_metaclass(Singleton, NumberSymbol)):
+class Khinchin(NumberSymbol, metaclass=Singleton):
     is_real = True
     is_positive = True
     is_negative = False
