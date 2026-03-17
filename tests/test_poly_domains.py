@@ -5,8 +5,8 @@ from ramanujan.poly_domains.MCTSPolyDomain import MCTSPolyDomain
 class TestPolyDomains(unittest.TestCase):
     def test_continuous_relaxation_domain(self):
         domain = ContinuousRelaxationDomain(
-            a_deg=2, a_coef_range=[[-10, 10], [-10, 10], [-10, 10]], 
-            b_deg=2, b_coef_range=[[-10, 10], [-10, 10], [-10, 10]],
+            a_deg=2, a_coef_range=[-10, 10], 
+            b_deg=2, b_coef_range=[-10, 10],
             epochs=20
         )
         
@@ -20,8 +20,8 @@ class TestPolyDomains(unittest.TestCase):
         
     def test_mcts_poly_domain(self):
         domain = MCTSPolyDomain(
-            a_deg=1, a_coef_range=[[-20, 20], [-20, 20]], 
-            b_deg=1, b_coef_range=[[-20, 20], [-20, 20]],
+            a_deg=1, a_coef_range=[-20, 20], 
+            b_deg=1, b_coef_range=[-20, 20],
             mcts_iterations=200
         )
         
