@@ -108,68 +108,68 @@ class GPUEfficientGCFEnumerator(EfficientGCFEnumerator):
                     b_chunk = b_tensor[j : j + CHUNK_B] 
                     chunk_b_size = b_chunk.shape[0]
                 
-                # Cross product using broadcasting and reshape
-                a_expanded = a_chunk.unsqueeze(1).expand(chunk_a_size, chunk_b_size, N_terms).reshape(-1, N_terms)
-                b_expanded = b_chunk.unsqueeze(0).expand(chunk_a_size, chunk_b_size, N_terms).reshape(-1, N_terms)
-                
-                bsz = a_expanded.shape[0]
-                
-                prev_q = torch.zeros(bsz, dtype=torch.float64, device=self.device)
-                q = torch.ones(bsz, dtype=torch.float64, device=self.device)
-                prev_p = torch.ones(bsz, dtype=torch.float64, device=self.device)
-                p = a_expanded[:, 0].clone()
-                
-                # Batched convergent evaluation
-                for k in range(1, N_terms):
-                    tmp_q = q.clone()
-                    tmp_p = p.clone()
-                    q = a_expanded[:, k] * q + b_expanded[:, k] * prev_q
-                    p = a_expanded[:, k] * p + b_expanded[:, k] * prev_p
-                    prev_q = tmp_q
-                    prev_p = tmp_p
+                    # Cross product using broadcasting and reshape
+                    a_expanded = a_chunk.unsqueeze(1).expand(chunk_a_size, chunk_b_size, N_terms).reshape(-1, N_terms)
+                    b_expanded = b_chunk.unsqueeze(0).expand(chunk_a_size, chunk_b_size, N_terms).reshape(-1, N_terms)
                     
-                    # Periodic scaling to prevent float64 overflow, taking max magnitude
-                    scale = q.abs().clamp_min(1.0)
-                    q /= scale
-                    p /= scale
-                    prev_q /= scale
-                    prev_p /= scale
+                    bsz = a_expanded.shape[0]
+                    
+                    prev_q = torch.zeros(bsz, dtype=torch.float64, device=self.device)
+                    q = torch.ones(bsz, dtype=torch.float64, device=self.device)
+                    prev_p = torch.ones(bsz, dtype=torch.float64, device=self.device)
+                    p = a_expanded[:, 0].clone()
+                    
+                    # Batched convergent evaluation
+                    for k in range(1, N_terms):
+                        tmp_q = q.clone()
+                        tmp_p = p.clone()
+                        q = a_expanded[:, k] * q + b_expanded[:, k] * prev_q
+                        p = a_expanded[:, k] * p + b_expanded[:, k] * prev_p
+                        prev_q = tmp_q
+                        prev_p = tmp_p
+                        
+                        # Periodic scaling to prevent float64 overflow, taking max magnitude
+                        scale = q.abs().clamp_min(1.0)
+                        q /= scale
+                        p /= scale
+                        prev_q /= scale
+                        prev_p /= scale
 
-                dist = key_factor * p / q
-                dist = torch.nan_to_num(dist, nan=0.0)
-                hash_keys = dist.trunc().long()
-                
-                # ─────────────────────────────────────────────────────────
-                # VECTORIZED MATCHING (Replaces 5M Python loop)
-                # ─────────────────────────────────────────────────────────
-                # Check intersections entirely on CUDA
-                matches_mask = torch.isin(hash_keys, lhs_keys_tensor)
-                
-                # Extract indices of matches
-                match_indices = torch.nonzero(matches_mask).squeeze(1)
-                
-                if match_indices.numel() > 0:
-                    # Move only the specific hit indices back to CPU
-                    match_indices_cpu = match_indices.cpu().numpy()
-                    keys_cpu = hash_keys[match_indices].cpu().numpy()
+                    dist = key_factor * p / q
+                    dist = torch.nan_to_num(dist, nan=0.0)
+                    hash_keys = dist.trunc().long()
                     
-                    for idx_gpu, key in zip(match_indices_cpu, keys_cpu):
-                        a_idx = i + int(idx_gpu) // chunk_b_size
-                        b_idx = j + int(idx_gpu) % chunk_b_size
-                        results.append(Match(key, a_coef_list[a_idx], b_coef_list[b_idx]))
-                
-                # ─────────────────────────────────────────────────────────
-                # LIVE PROGRESS LOGGING & ETA via tqdm
-                # ─────────────────────────────────────────────────────────
-                processed_combinations += bsz
-                pbar.update(bsz)
-                pbar.set_postfix({'Hits': len(results)})
-                
-                if verbose and (processed_combinations % (bsz * 50) == 0 or processed_combinations == num_iterations):
-                    # Write persistently to log file every ~50 batches to avoid IO bottleneck
-                    with open("search_progress.log", "a") as logf:
-                        log_str = f"Processed: {processed_combinations:,}/{num_iterations:,} | Hits: {len(results)}"
-                        logf.write(f"[{time()}] {log_str}\n")
+                    # ─────────────────────────────────────────────────────────
+                    # VECTORIZED MATCHING (Replaces 5M Python loop)
+                    # ─────────────────────────────────────────────────────────
+                    # Check intersections entirely on CUDA
+                    matches_mask = torch.isin(hash_keys, lhs_keys_tensor)
+                    
+                    # Extract indices of matches
+                    match_indices = torch.nonzero(matches_mask).squeeze(1)
+                    
+                    if match_indices.numel() > 0:
+                        # Move only the specific hit indices back to CPU
+                        match_indices_cpu = match_indices.cpu().numpy()
+                        keys_cpu = hash_keys[match_indices].cpu().numpy()
+                        
+                        for idx_gpu, key in zip(match_indices_cpu, keys_cpu):
+                            a_idx = i + int(idx_gpu) // chunk_b_size
+                            b_idx = j + int(idx_gpu) % chunk_b_size
+                            results.append(Match(key, a_coef_list[a_idx], b_coef_list[b_idx]))
+                    
+                    # ─────────────────────────────────────────────────────────
+                    # LIVE PROGRESS LOGGING & ETA via tqdm
+                    # ─────────────────────────────────────────────────────────
+                    processed_combinations += bsz
+                    pbar.update(bsz)
+                    pbar.set_postfix({'Hits': len(results)})
+                    
+                    if verbose and (processed_combinations % (bsz * 50) == 0 or processed_combinations == num_iterations):
+                        # Write persistently to log file every ~50 batches to avoid IO bottleneck
+                        with open("search_progress.log", "a") as logf:
+                            log_str = f"Processed: {processed_combinations:,}/{num_iterations:,} | Hits: {len(results)}"
+                            logf.write(f"[{time()}] {log_str}\n")
                         
         if verbose:
             print(f"\nCreated results after {time() - start:.2f}s. Found {len(results)} preliminary matches.")
