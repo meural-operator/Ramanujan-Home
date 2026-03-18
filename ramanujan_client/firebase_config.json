@@ -1,0 +1,10 @@
+{
+  "apiKey": "AIzaSyCp1GpLSTGfjayQ-Yk0tW3dot1cOVpwxSE",
+  "authDomain": "ramanujan-engine.firebaseapp.com",
+  "databaseURL": "https://ramanujan-engine-default-rtdb.firebaseio.com",
+  "projectId": "ramanujan-engine",
+  "storageBucket": "ramanujan-engine.firebasestorage.app",
+  "messagingSenderId": "662438808921",
+  "appId": "1:662438808921:web:7d286acd925a08f1efd048",
+  "measurementId": "G-LT414LS49S"
+}
