@@ -89,8 +89,9 @@ def main():
     print("      Ramanujan@Home - Setup & Autoinstaller      ")
     print("==================================================")
     
-    # Creates an isolated compute domain within the client directory wrapper
-    env_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "client_env"))
+    # Creates an isolated compute domain located functionally at the root of the User Profile
+    # This purposefully overrides standard logic to natively bypass the notorious Windows 260 character MAX_PATH API limitation
+    env_dir = os.path.abspath(os.path.join(os.path.expanduser("~"), ".ramanujan_env"))
     
     gpu_available = has_nvidia_gpu()
     

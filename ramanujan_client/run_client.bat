@@ -28,8 +28,8 @@ if not exist "python_313\python.exe" (
     )
 )
 
-:: 2. Fast-check if the isolated virtual environment exists
-if not exist "client_env\Scripts\python.exe" (
+:: 2. Fast-check if the isolated virtual environment exists globally
+if not exist "%USERPROFILE%\.ramanujan_env\Scripts\python.exe" (
     echo [*] First-time standalone setup detected. Bootstrapping AI Environment...
     :: We use our newly isolated Python 3.13 baseline to trigger the auto-installer wrapper
     python_313\python.exe setup\autoinstaller.py
@@ -41,6 +41,6 @@ if not exist "client_env\Scripts\python.exe" (
 )
 
 echo [*] Launching Client Application...
-client_env\Scripts\python.exe ramanujan_client.py
+"%USERPROFILE%\.ramanujan_env\Scripts\python.exe" ramanujan_client.py
 
 pause
