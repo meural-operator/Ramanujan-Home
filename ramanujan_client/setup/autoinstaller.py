@@ -96,7 +96,7 @@ def main():
     print("==================================================")
     print(" Installation Complete! ")
     print(" You can now run the distributed node by executing: ")
-    print(f" {python_exe} app.py")
+    print(f" {python_exe} ramanujan_client.py")
     print("==================================================")
 
 if __name__ == "__main__":
