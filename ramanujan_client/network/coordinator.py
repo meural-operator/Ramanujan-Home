@@ -287,15 +287,29 @@ class ServerCoordinator:
             
             # 2. LOG ANALYTICS: Update the Global User Contribution Tracker
             try:
-                curr_evals = db.child("users").child(user_uid).child("total_evaluations").get(self.id_token).val() or 0
+                import requests
+                base_url = self.firebase.database().database_url
+                user_url = f"{base_url}/users/{user_uid}.json?auth={self.id_token}"
+                
+                # Natively fetch current statistics bypassing Pyrebase limitations
+                get_res = requests.get(user_url)
+                current_data = get_res.json() if get_res.status_code == 200 and get_res.json() else {}
+                
+                curr_evals = current_data.get("total_evaluations", 0)
+                curr_hits = current_data.get("total_hits", 0)
                 eval_payload = int(work_unit.get('evaluations', 0))
                 
-                db.child("users").child(user_uid).update({
+                new_data = {
                     "display_name": self.user.get('name', 'Community Math AI'),
                     "total_evaluations": curr_evals + eval_payload,
                     "last_active": int(time.time()),
-                    "total_hits": (db.child("users").child(user_uid).child("total_hits").get(self.id_token).val() or 0) + len(hits)
-                }, self.id_token)
+                    "total_hits": curr_hits + len(hits)
+                }
+                
+                # Perform native REST patch directly locking the Endpoint successfully
+                patch_res = requests.patch(user_url, json=new_data)
+                patch_res.raise_for_status()
+                
             except Exception as analytic_e:
                 print(f"[-] Continuous Analytics update partially failed: {analytic_e}")
             
