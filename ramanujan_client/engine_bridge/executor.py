@@ -30,7 +30,7 @@ class RamanujanExecutor:
         print(f"\n==================================================")
         print(f"[*] Starting Engine V2 for Work Unit #{work_unit['id']}")
         print(f"[*] Target Constant: {work_unit['constant_name']}")
-        print(f"[*] Execution Grid: {work_unit['range']}")
+        print(f"[*] Execution Volume: {work_unit.get('evaluations', 'Unknown')} mathematically strict combinations")
         print(f"==================================================\n")
         
         a_deg = work_unit['a_deg']

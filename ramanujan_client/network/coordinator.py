@@ -199,7 +199,7 @@ class ServerCoordinator:
                 update_data = {
                     "status": "assigned",
                     "assigned_to": user_uid,
-                    "time_assigned": int(time.time())
+                    "time_assigned": int(time.time() * 1000)
                 }
                 
                 # Attempt the atomic-like update using the idToken and precise Security Rules
@@ -215,7 +215,40 @@ class ServerCoordinator:
                     print(f"[-] Someone else claimed {unit_id} first or permission denied. Trying next...")
                     continue
                     
-            print("[-] Flushed pending queue, but could not claim a unit.")
+            # ---------------------------------------------------------
+            # THE DEAD LETTER QUEUE (Orphan Recovery Block)
+            # ---------------------------------------------------------
+            print(f"[-] No pristine blocks found. Scanning for abandoned hardware nodes...")
+            stale_query = self.db.child(f"work_units_{tier}").order_by_child("status").equal_to("assigned").limit_to_first(50).get(self.id_token)
+            
+            if stale_query.val():
+                current_time_ms = int(time.time() * 1000)
+                abandon_limit_ms = 3600 * 1000 # 1 hour timeout
+                
+                for unit in stale_query.each():
+                    u_id = unit.key()
+                    u_data = unit.val()
+                    assigned_time = u_data.get("time_assigned", current_time_ms)
+                    
+                    if current_time_ms - assigned_time > abandon_limit_ms:
+                        print(f"[*] Recovered orphaned payload: {u_id}. Attempting to forcefully re-assign to local node...")
+                        try:
+                            rescue_data = {
+                                "status": "assigned",
+                                "assigned_to": self.user.get('localId', self.user.get('userId')),
+                                "time_assigned": current_time_ms
+                            }
+                            self.db.child(f"work_units_{tier}").child(u_id).update(rescue_data, self.id_token)
+                            print(f"[+] Successfully resurrected and hijacked Dead Letter Payload {u_id}!")
+                            
+                            if "id" not in u_data:
+                                u_data["id"] = u_id
+                            return u_data
+                        except Exception:
+                            print("[-] Failed to rescue orphaned payload (already stolen by another node).")
+                            continue
+            
+            print(f"[-] No blocks available in the {tier} track. Database is temporarily exhausted.")
             return None
             
         except Exception as e:
@@ -231,6 +264,9 @@ class ServerCoordinator:
         work_unit_id = work_unit.get('id')
         tier = work_unit.get('tier', 'small')
         
+        # Instantiate a pristine Database object to bypass Pyrebase query parameter bleed natively.
+        db = self.firebase.database()
+        
         try:
             for hit in hits:
                 result_data = {
@@ -242,24 +278,38 @@ class ServerCoordinator:
                 }
                 
                 # Push the atomic hit object, relying on security rules to lock it eternally 
-                self.db.child("results").push(result_data, self.id_token)
+                db.child("results").push(result_data, self.id_token)
             
             # Finalize the workload block as completed natively
-            self.db.child(f"work_units_{tier}").child(work_unit_id).update({
+            db.child(f"work_units_{tier}").child(work_unit_id).update({
                 "status": "completed"
             }, self.id_token)
             
             # 2. LOG ANALYTICS: Update the Global User Contribution Tracker
             try:
-                curr_evals = self.db.child("users").child(user_uid).child("total_evaluations").get(self.id_token).val() or 0
+                import requests
+                base_url = self.firebase.database().database_url
+                user_url = f"{base_url}/users/{user_uid}.json?auth={self.id_token}"
+                
+                # Natively fetch current statistics bypassing Pyrebase limitations
+                get_res = requests.get(user_url)
+                current_data = get_res.json() if get_res.status_code == 200 and get_res.json() else {}
+                
+                curr_evals = current_data.get("total_evaluations", 0)
+                curr_hits = current_data.get("total_hits", 0)
                 eval_payload = int(work_unit.get('evaluations', 0))
                 
-                self.db.child("users").child(user_uid).update({
+                new_data = {
                     "display_name": self.user.get('name', 'Community Math AI'),
                     "total_evaluations": curr_evals + eval_payload,
                     "last_active": int(time.time()),
-                    "total_hits": (self.db.child("users").child(user_uid).child("total_hits").get(self.id_token).val() or 0) + len(hits)
-                }, self.id_token)
+                    "total_hits": curr_hits + len(hits)
+                }
+                
+                # Perform native REST patch directly locking the Endpoint successfully
+                patch_res = requests.patch(user_url, json=new_data)
+                patch_res.raise_for_status()
+                
             except Exception as analytic_e:
                 print(f"[-] Continuous Analytics update partially failed: {analytic_e}")
             
