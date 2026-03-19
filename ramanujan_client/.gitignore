@@ -8,7 +8,8 @@ __pycache__/
 
 # Firebase & Cloud Credentials
 *.json
-!firebase_config.json.template 
+!firebase_config.json
+!firebase_config.json.template
 ramanujan-engine-firebase-adminsdk*.json
 
 # Execution Caches
