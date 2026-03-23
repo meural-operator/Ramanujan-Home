@@ -1,99 +1,124 @@
-# Ramanujan Machine Engine V2
+# Ramanujan Engine V3: Mathematical Discovery Framework
 
-The Ramanujan Machine is an algorithmic approach to discover new mathematical conjectures. This project focuses on number theory, specifically finding formulas relating fundamental constants like pi, e, the Riemann zeta function values, and the Euler-Mascheroni constant to various continued fractions.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/release/python-3130/)
+[![PyTorch CUDA](https://img.shields.io/badge/PyTorch-CUDA_Ready-EE4C2C.svg)](https://pytorch.org/)
+[![Distributed Compute](https://img.shields.io/badge/Computing-Distributed_Edge-yellow.svg)](https://firebase.google.com/)
 
-For background information, please visit [RamanujanMachine.com](https://www.RamanujanMachine.com).
+A globally distributed, GPU-accelerated computing network bridging **Deep Reinforcement Learning (AlphaTensor MCTS)** with **PyTorch Tensor exhaustion** to mathematically discover novel continued fractions. Originating as a brute-force mathematical search, this repository has been heavily rewritten into a strictly-typed, plug-and-play **Modular Mathematical Framework**.
 
-## 🚀 Engine V2: AI & GPU Architecture
+## 🌟 Key Modifications (V3 Architecture Refactor)
+This repository represents a massive paradigm shift from the V2 legacy codebase:
+1. **Abstract Interface Decoupling**: Decommissioned the monolithic hardcoded evaluator in favor of a universal 4-stage abstract plugin pipeline (`TargetConstant`, `BoundingStrategy`, `EnumeratorEngine`, `NetworkCoordinator`).
+2. **Deep Reinforcement Bounds Pruning**: Integrated an advanced **AlphaTensor MCTS (Monte Carlo Tree Search)** heuristic that maps physical trajectories and intelligently slices coordinate spaces prior to exhausting GPU memory.
+3. **Decentralized Zero-Loss Edge Nodes**: Stripped out legacy file-system tracking and deployed a hardened `sqlite3` edge cache that guarantees verified discoveries survive accidental power or network losses.
+4. **Frictionless Distribution**: Volunteers worldwide can now join the compute cluster with a strictly autonomous 1-click `.bat` deployment that handles Micromamba isolation, dependencies, credential generation, and mathematical table initializations transparently.
+5. **Research-Grade RL Training Suite**: Outfitted with a dedicated Curriculum Learning PPO cycle, asynchronous PyTorch scaling, and rigorous mathematical TensorBoard MLOps.
 
-This iteration of the Ramanujan Machine Engine introduces a major architectural overhaul, transforming the search engine into a high-performance, AI-guided discovery platform capable of evaluating billions of combinations seamlessly.
+---
 
-### Key Cutting-Edge Features
+## 🏗️ Architecture & Hierarchy
 
-1. **Modular Deep RL Framework (`ramanujan/math_ai/`)**:
-   - **Gym-Native Environments**: Abstracted Gym-like RL environments (`AbstractRLEnvironment`, `GCFRewardEnvironment`) where the "reward" is the matched digits of numerical convergence.
-   - **Actor-Critic Neural Models**: PyTorch-based neural networks that evaluate deep mathematical sequence trajectories to predict optimal Upper Confidence Bounds (UCB) for search domains.
+The V3 engine is heavily decoupled using the **Adapter and Strategy Software Patterns**. The high-level execution flow is managed autonomously by the `V3PipelineExecutor`.
 
-2. **Neural-Guided MCTS Search (`NeuralMCTSPolyDomain`)**:
-   - Instead of relying on brute-force combinatorics or heavy-handed gradient descent, the Engine now deploys AlphaTensor-style Deep Reinforcement Learning.
-   - The AI simulates random mathematical traversals, scoring them with the Actor-Critic network, and returning a narrowly optimized, mathematically dense search space for the GPU.
+```mermaid
+graph TD
+    classDef core fill:#2d3436,stroke:#74b9ff,stroke-width:2px,color:#fff;
+    classDef abstract fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef plugin fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff;
 
-3. **High-Performance GPU Exhaustion**:
-   - **`GPUEfficientGCFEnumerator`**: Takes the bound predictions from the AI and generates massive mathematical tensor arrays on standard NVIDIA CUDA hardware. 
-   - **Zero-Latency Hash Matching**: Replaced massive standard Python iteration loops with heavily vectorized `torch.isin` intersections directly on the CUDA cores.
+    A[Network Coordinator API] ::: plugin -->|Delivers Boundary Space| B(V3PipelineExecutor) ::: core
+    
+    B -->|Hooks| C1(TargetConstant) ::: abstract
+    B -->|Pipes raw limits| C2(BoundingStrategy) ::: abstract
+    B -->|Sinks constrained space| C3(EnumeratorEngine) ::: abstract
+    
+    C1 -->|EulerMascheroniTarget| D1[Generates Precision Match Hash] ::: plugin
+    C2 -->|MCTSStrategy| D2[Prunes Search Volume via Neural RL] ::: plugin
+    C3 -->|CUDAEnumerator| D3[NVIDIA Tensor Accelerator] ::: plugin
+    
+    D3 -->|Yields Mathematical Hits| B
+    B -->|Synchronizes Global DB| A
+```
 
-4. **Asynchronous CPU Verification (Dual Threading)**:
-   - The engine operates on a Producer-Consumer threading model. The GPU (Producer) blasts through millions of combinations a second.
-   - When a preliminary hit is found, it is instantly dropped into a thread-safe Queue. 
-   - A concurrent background CPU thread (Consumer) runs high-precision `mpmath` validations continuously. The GPU never blocks or waits for the CPU.
+### Component Relationships
+* **`TargetConstant`**: Injects absolute mathematical truth (e.g. `EulerMascheroniTarget`). Dictates floating-point threshold validations and generates required Look-Up-Tables (LHS keys).
+* **`BoundingStrategy`**: Sequence of optimization filters. `MCTSStrategy` currently hooks up to external PyTorch weights (`em_mcts.pt`) to physically restrict impossible dimensions from being searched.
+* **`EnumeratorEngine`**: The bare-metal exhaustive execution layer. `CUDAEnumerator` wraps the legacy 200-line highly optimized broadcasting Tensor matrices into a safe, encapsulated plugin.
+* **`NetworkCoordinator`**: `FirebaseCoordinator` safely extracts REST and Pyrebase hooks to fetch distributed payloads from the centralized cloud architecture.
 
-## Installation
+---
 
-Clone the repository and install the dependencies. The Engine requires PyTorch and basic CUDA support to fully execute the V2 pipeline.
+## 🗃️ Inventory of Problems & Features
+The framework successfully generalizes the following domain complexities:
+* **Euler-Mascheroni Constant Discovery**: Active high-precision execution domain attempting to find novel exact formulas mapping to `0.57721566...`
+* **Neural Actor-Critic Trajectories**: `math_ai` directory actively hosts state spaces and physical environment transitions specific to polynomial continued fractions. 
+* **Dynamic Grid Orchestration**: Synchronous and asynchronous mutually exclusive locks deployed via cloud infrastructure preventing thousands of GPU nodes from resolving overlapping blocks.
 
+---
+
+## 🚀 Execution Guide
+
+### 1-Click Deployment (Windows Volunteers)
+For individuals dedicating compute to the cluster:
+1. `git clone https://github.com/meural-operator/ramanujan_engineV2.git`
+2. `cd ramanujan_engineV2\ramanujan_client`
+3. Execute **`run_client.bat`**
+> *The script will natively secure an isolated Python 3.13 Micromamba container, automatically synthesize cloud credentials, seed the 30MB LHS lookup tables sequentially, and orbit your GPU into the live cluster.*
+
+### Manual Research Execution (Scientists & Engineers)
+**1. Environment Bootstrap:**
 ```bash
-conda create -n curiosity python=3.13
+conda env create -f setup/environment.yml
+# Or manually build Python 3.13 with PyTorch / MpMath
 conda activate curiosity
-pip install -e .
 ```
 
-## Running the Code
-
-To start a new execution, you must define the LHS (Left Hand Side) constant, the search Domain, and the Enumerator.
-
-### Example: Deep RL Euler-Mascheroni Search
-
-Here is how you initialize the AI-driven search pipeline (as seen in `scripts/euler_mascheroni_research_grade.py`):
-
-#### 1. Generate LHS Hash Table
-Create the hash boundary matrix for the target mathematical constant.
-```python
-from ramanujan.LHSHashTable import LHSHashTable
-from ramanujan.constants import g_const_dict
-
-const_val = g_const_dict['euler-mascheroni']
-lhs = LHSHashTable('euler_mascheroni.db', 30, [const_val])
+**2. Seed Legacy Verification Math Tables (One-Time):**
+```bash
+python scripts/seed_euler_mascheroni_db.py
 ```
 
-#### 2. Initialize the Neural MCTS Domain
-Use the AI to discover the optimal iteration boundaries.
-```python
-from ramanujan.poly_domains.NeuralMCTSPolyDomain import NeuralMCTSPolyDomain
-
-poly_search_domain = NeuralMCTSPolyDomain(
-    a_deg=3, a_coef_range=[-16, 16],
-    b_deg=3, b_coef_range=[-16, 16],
-    target_val=const_val,
-    mcts_simulations=1000 # Let the Actor-Critic network run 1k sequence rollouts
-)
+**3. Initialize Edge Evaluation Node Pipeline:**
+```bash
+cd ramanujan_client
+python ramanujan_client.py
 ```
 
-#### 3. Start the Asynchronous GPU/CPU Enumerator
-Execute the highly-parallelized enumeration.
-```python
-from ramanujan.enumerators.GPUEfficientGCFEnumerator import GPUEfficientGCFEnumerator
-
-enumerator = GPUEfficientGCFEnumerator(lhs, poly_search_domain, [const_val])
-
-# Output will display a Dual-TQDM layout.
-# 1. GPU iteration bounds (processing ~20M/s)
-# 2. CPU verification queue (processing arbitrary precision maths)
-results = enumerator.full_execution()
-
-enumerator.print_results(results)
+### Reinforcement Learning Module Training
+To mature the MCTS node network on new constants or wider polynomial bounds:
+```bash
+cd research_training
+python train.py --episodes 50000 --max-depth 200
 ```
+> Track performance dynamically via: `tensorboard --logdir runs/`
 
-## Legacy Support
+---
 
-While `Engine V2` brings Deep RL, the architecture is entirely backwards-compatible and Plug-and-Play. You can still use simple Cartesian bounds or basic Monte Carlo samplings while taking full advantage of the Zero-Latency GPU backend.
-
-```python
-# Just swap the AI Domain out for a simple baseline domain:
-from ramanujan.poly_domains.CartesianProductPolyDomain import CartesianProductPolyDomain
-
-poly_search_domain = CartesianProductPolyDomain(
-    a_deg=2, a_coef_range=[-5, 5],
-    b_deg=2, b_coef_range=[-5, 5]
-)
-# The GPUEfficientGCFEnumerator will still execute it asynchronously.
+## 📁 Repository Structure
+```text
+ramanujan_engineV2/
+├── ramanujan/                 # Core Research Framework
+│   ├── interfaces/            # V3 Abstract Base Classes (Contracts)
+│   ├── constants/             # Target Mathematical Plugins
+│   ├── enumerators/           # Hardware Acceleration Adapters
+│   ├── strategies/            # Pipeline Pruning Plugins
+│   ├── math_ai/               # Actor-Critic & AlphaTensor Brains
+│   ├── poly_domains/          # Cartesian Space Cartography
+│   └── coordinators/          # Network I/O Wrappers
+│
+├── ramanujan_client/          # Distributed Compute Node
+│   ├── engine_bridge/         # Decoupled V3PipelineExecutor Router
+│   ├── checkpoints/           # Compiled RL Weight Artifacts (.pt)
+│   ├── ramanujan_client.py    # Autonomous Setup and Cycle Hook
+│   └── run_client.bat         # Zero-Config Windows Deployer
+│
+├── research_training/         # PyTorch Dedicated Training Pipeline
+│   ├── train.py               # PPO Curriculum Matrix
+│   ├── config.yaml            # Hyperparameter Thresholds
+│   └── eval_mcts.py           # Physical Node Visualizer
+│
+├── scripts/                   # Structural DB / Task Handlers
+├── tests/                     # Strict Unit & Integration Protections
+└── README.md                  # Documentation (You are here)
 ```
