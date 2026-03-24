@@ -136,12 +136,18 @@ class CartesianProductPolyDomain(AbstractPolyDomains):
         if (len(an_coefs) - 1) * 2 != len(bn_coefs) - 1:
             return self.only_balanced_degrees
 
-        # Discard non-converging cases
-        if 4 * bn_coefs[0] < -1 * (an_coefs[0]**2):
-            return False
-
-        # On equality in convergence condition, some cases converge and some not 
-        if self.use_strict_convergence_cond and 4 * bn_coefs[0] == -1 * (an_coefs[0]**2):
+        from modules.continued_fractions.utils.asymptotic_filter import is_asymptotically_convergent
+        
+        a_lead = an_coefs[0] if len(an_coefs) > 0 else 1
+        b_lead = bn_coefs[0] if len(bn_coefs) > 0 else 1
+        
+        if not is_asymptotically_convergent(
+            a_deg=len(an_coefs)-1,
+            a_leading_coef=a_lead,
+            b_deg=len(bn_coefs)-1,
+            b_leading_coef=b_lead,
+            strict=self.use_strict_convergence_cond
+        ):
             return False
 
         return True
