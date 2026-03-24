@@ -241,7 +241,6 @@ ramanujan_engineV2/
 ├── documentation/                               # ✅ Research papers & notes
 ├── README.md                                    #    This file
 ├── CHANGELOG.md                                 #    Version history
-├── setup.py                                     #    Package installer
 └── requirements.txt                             #    Python dependencies
 ```
 
