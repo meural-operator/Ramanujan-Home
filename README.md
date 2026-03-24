@@ -72,8 +72,8 @@ A globally distributed, GPU-accelerated computing framework that orchestrates **
 Get a GPU compute node running in under 60 seconds:
 
 ```bash
-git clone https://github.com/meural-operator/ramanujan-engine.git
-cd ramanujan-engine/clients
+git clone https://github.com/meural-operator/param.git
+cd param/clients
 .\run_node.bat
 ```
 
@@ -189,8 +189,8 @@ tensorboard --logdir runs/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/meural-operator/ramanujan-engine.git
-cd ramanujan-engine
+git clone https://github.com/meural-operator/param.git
+cd param
 
 # 2. Create conda environment
 conda env create -f setup/environment.yml
@@ -458,7 +458,7 @@ If you use this framework in your research, please cite:
   title   = {Ramanujan: Universal Distributed Scientific Computing Framework},
   author  = {Ashish Musale},
   year    = {2026},
-  url     = {https://github.com/meural-operator/ramanujan-engine},
+  url     = {https://github.com/meural-operator/param},
   note    = {GPU-accelerated distributed framework for mathematical constant
              discovery via Deep RL and Generalized Continued Fractions}
 }
