@@ -28,33 +28,28 @@ The framework is built on a strict separation between **core infrastructure** an
 
 ```mermaid
 graph TD
-    classDef core fill:#2d3436,stroke:#74b9ff,stroke-width:2px,color:#fff;
-    classDef iface fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef module fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef client fill:#fdcb6e,stroke:#2d3436,stroke-width:2px,color:#2d3436;
-
-    subgraph "Core Framework"
-        PIPE[UniversalPipelineRouter] ::: core
-        I1[TargetProblem] ::: iface
-        I2[BoundingStrategy] ::: iface
-        I3[ExecutionEngine] ::: iface
-        I4[NetworkCoordinator] ::: iface
+    subgraph Core Framework
+        PIPE[UniversalPipelineRouter]
+        I1[TargetProblem]
+        I2[BoundingStrategy]
+        I3[ExecutionEngine]
+        I4[NetworkCoordinator]
     end
 
-    subgraph "Module: Continued Fractions"
-        M1[EulerMascheroniTarget] ::: module
-        M2[MCTSStrategy] ::: module
-        M3[CUDAEnumerator] ::: module
-        M4[FirebaseCoordinator] ::: module
+    subgraph Module: Continued Fractions
+        M1[EulerMascheroniTarget]
+        M2[MCTSStrategy]
+        M3[CUDAEnumerator]
+        M4[FirebaseCoordinator]
     end
 
-    subgraph "Module: Future Problem"
-        F1["ProteinFoldingTarget"] ::: module
-        F2["GeneticStrategy"] ::: module
-        F3["TPUEngine"] ::: module
+    subgraph Module: Future Problem
+        F1[ProteinFoldingTarget]
+        F2[GeneticStrategy]
+        F3[TPUEngine]
     end
 
-    CLIENT[Edge Node Client] ::: client -->|boots| PIPE
+    CLIENT[Edge Node Client] -->|boots| PIPE
     PIPE --> I1 --> M1
     PIPE --> I2 --> M2
     PIPE --> I3 --> M3
@@ -63,6 +58,20 @@ graph TD
     I1 -.-> F1
     I2 -.-> F2
     I3 -.-> F3
+
+    style PIPE fill:#2d3436,stroke:#74b9ff,stroke-width:2px,color:#fff
+    style I1 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
+    style I2 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
+    style I3 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
+    style I4 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
+    style M1 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
+    style M2 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
+    style M3 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
+    style M4 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
+    style F1 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
+    style F2 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
+    style F3 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
+    style CLIENT fill:#fdcb6e,stroke:#2d3436,stroke-width:2px,color:#2d3436
 ```
 
 ### Abstract Interfaces (`core/interfaces/`)
