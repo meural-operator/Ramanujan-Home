@@ -27,51 +27,133 @@ A globally distributed, GPU-accelerated computing framework that orchestrates **
 The framework is built on a strict separation between **core infrastructure** and **scientific modules**. The `UniversalPipelineRouter` orchestrates any combination of plugins without knowing their internals.
 
 ```mermaid
-graph TD
-    subgraph Core Framework
-        PIPE[UniversalPipelineRouter]
-        I1[TargetProblem]
-        I2[BoundingStrategy]
-        I3[ExecutionEngine]
-        I4[NetworkCoordinator]
+graph TB
+    subgraph EDGE["☁️ Distributed Edge Network"]
+        CLIENT["edge_node.py<br/>run_node.bat"]
+        FB_DB[("Firebase RTDB<br/>Work Units Queue")]
     end
 
-    subgraph Module: Continued Fractions
-        M1[EulerMascheroniTarget]
-        M2[MCTSStrategy]
-        M3[CUDAEnumerator]
-        M4[FirebaseCoordinator]
+    subgraph CORE["⚙️ core/ — Universal Framework Engine"]
+        PIPE["UniversalPipelineRouter<br/><i>pipeline.py</i>"]
+
+        subgraph IFACES["Abstract Interfaces"]
+            I1["🔷 TargetProblem<br/><i>name, precision, verify_match()</i>"]
+            I2["🔷 BoundingStrategy<br/><i>strategy_name, prune_bounds()</i>"]
+            I3["🔷 ExecutionEngine<br/><i>engine_id, batch_evaluate()</i>"]
+            I4["🔷 NetworkCoordinator<br/><i>fetch_work_unit(), submit_results()</i>"]
+        end
     end
 
-    subgraph Module: Future Problem
-        F1[ProteinFoldingTarget]
-        F2[GeneticStrategy]
-        F3[TPUEngine]
+    subgraph GCF["📐 modules/continued_fractions/ — Active Module"]
+        subgraph TARGETS["targets/"]
+            EM["EulerMascheroniTarget<br/><i>γ = 0.5772...</i>"]
+        end
+
+        subgraph ENGINES["engines/"]
+            CUDA_W["CUDAEnumerator<br/><i>V4 Adapter Wrapper</i>"]
+            GPU["GPUEfficientGCFEnumerator<br/><i>PyTorch CUDA Tensor Broadcast</i>"]
+            CPU["EfficientGCFEnumerator<br/><i>CPU Vectorized</i>"]
+            FR["FREnumerator<br/><i>Multi-dim PSLQ</i>"]
+            PAR["ParallelGCFEnumerator<br/><i>ProcessPool</i>"]
+        end
+
+        subgraph DOMAINS["domains/ — 13 Search Spaces"]
+            D_CART["CartesianProductPolyDomain"]
+            D_MCTS["MCTSPolyDomain"]
+            D_NEURAL["NeuralMCTSPolyDomain"]
+            D_ZETA["Zeta3 / Zeta5 / Zeta7"]
+            D_CAT["CatalanDomain"]
+        end
+
+        subgraph AI["math_ai/ — Deep RL"]
+            MCTS_S["MCTSStrategy<br/><i>BoundingStrategy impl</i>"]
+            AGENT["AlphaTensor MCTS Agent<br/><i>12.9 KB neural network</i>"]
+            AC["Actor-Critic Network<br/><i>Policy + Value heads</i>"]
+            ENV["RL Environments<br/><i>GCFReward / EulerMascheroni</i>"]
+            PPO["PPO Trainer + Replay Buffer"]
+        end
+
+        subgraph UTILS["utils/"]
+            MOBIUS["Möbius Transforms"]
+            ASYM["Worpitzky Convergence Filter"]
+            CONV["Convergence Rate Calculator"]
+        end
+
+        LHS["LHSHashTable<br/><i>Precomputed Möbius Lookup</i>"]
     end
 
-    CLIENT[Edge Node Client] -->|boots| PIPE
-    PIPE --> I1 --> M1
-    PIPE --> I2 --> M2
-    PIPE --> I3 --> M3
-    PIPE --> I4 --> M4
+    subgraph COORD["🌐 core/coordinators/"]
+        FB_COORD["FirebaseCoordinator<br/><i>REST API + Auth</i>"]
+    end
 
-    I1 -.-> F1
-    I2 -.-> F2
-    I3 -.-> F3
+    subgraph TRAIN["🧪 research_training/ — RL Pipeline"]
+        TRAIN_PY["train.py — PPO Curriculum"]
+        CONFIG["config.yaml"]
+        EVAL["eval_mcts.py — Visualizer"]
+        TB["TensorBoard MLOps"]
+    end
 
-    style PIPE fill:#2d3436,stroke:#74b9ff,stroke-width:2px,color:#fff
-    style I1 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
-    style I2 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
-    style I3 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
-    style I4 fill:#0984e3,stroke:#fff,stroke-width:2px,color:#fff
-    style M1 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
-    style M2 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
-    style M3 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
-    style M4 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
-    style F1 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
-    style F2 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
-    style F3 fill:#00b894,stroke:#fff,stroke-width:2px,color:#fff
-    style CLIENT fill:#fdcb6e,stroke:#2d3436,stroke-width:2px,color:#2d3436
+    subgraph FUTURE["🔮 Future Modules (Planned)"]
+        FP["modules/protein_folding/"]
+        FPG["modules/prime_gaps/"]
+        FSI["modules/symbolic_integration/"]
+    end
+
+    CLIENT -->|"1. Boot & Auth"| FB_COORD
+    FB_COORD <-->|"Fetch / Submit"| FB_DB
+    FB_COORD -->|"2. Work Unit"| PIPE
+    PIPE -->|"3. Define Problem"| I1
+    PIPE -->|"4. Prune Bounds"| I2
+    PIPE -->|"5. Execute Compute"| I3
+    PIPE -->|"6. Report Results"| I4
+
+    I1 -->|implements| EM
+    I2 -->|implements| MCTS_S
+    I3 -->|implements| CUDA_W
+    I4 -->|implements| FB_COORD
+
+    MCTS_S --> AGENT
+    AGENT --> AC
+    CUDA_W --> GPU
+    GPU -->|"Tensor hits"| UTILS
+    EM --> LHS
+
+    TRAIN_PY --> ENV
+    TRAIN_PY --> AC
+    TRAIN_PY --> PPO
+    TRAIN_PY --> TB
+    CONFIG -.-> TRAIN_PY
+    EVAL -.-> AGENT
+
+    I1 -.->|"future"| FP
+    I2 -.->|"future"| FPG
+    I3 -.->|"future"| FSI
+
+    style CORE fill:#1e272e,stroke:#74b9ff,stroke-width:2px,color:#fff
+    style IFACES fill:#2d3436,stroke:#0984e3,stroke-width:2px,color:#dfe6e9
+    style GCF fill:#0a3d0c,stroke:#00b894,stroke-width:2px,color:#fff
+    style COORD fill:#1e272e,stroke:#74b9ff,stroke-width:1px,color:#fff
+    style EDGE fill:#2d3436,stroke:#fdcb6e,stroke-width:2px,color:#fff
+    style TRAIN fill:#2d3436,stroke:#e17055,stroke-width:2px,color:#fff
+    style FUTURE fill:#2d3436,stroke:#636e72,stroke-width:2px,stroke-dasharray:5 5,color:#636e72
+
+    style PIPE fill:#0984e3,stroke:#fff,color:#fff
+    style I1 fill:#0984e3,stroke:#74b9ff,color:#fff
+    style I2 fill:#0984e3,stroke:#74b9ff,color:#fff
+    style I3 fill:#0984e3,stroke:#74b9ff,color:#fff
+    style I4 fill:#0984e3,stroke:#74b9ff,color:#fff
+    style EM fill:#00b894,stroke:#fff,color:#fff
+    style MCTS_S fill:#00b894,stroke:#fff,color:#fff
+    style CUDA_W fill:#00b894,stroke:#fff,color:#fff
+    style FB_COORD fill:#00b894,stroke:#fff,color:#fff
+    style CLIENT fill:#fdcb6e,stroke:#2d3436,color:#2d3436
+    style FB_DB fill:#e17055,stroke:#fff,color:#fff
+    style GPU fill:#6c5ce7,stroke:#fff,color:#fff
+    style AGENT fill:#e17055,stroke:#fff,color:#fff
+    style AC fill:#e17055,stroke:#fff,color:#fff
+    style FP fill:#636e72,stroke:#636e72,stroke-dasharray:5 5,color:#b2bec3
+    style FPG fill:#636e72,stroke:#636e72,stroke-dasharray:5 5,color:#b2bec3
+    style FSI fill:#636e72,stroke:#636e72,stroke-dasharray:5 5,color:#b2bec3
 ```
 
 ### Abstract Interfaces (`core/interfaces/`)
