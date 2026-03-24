@@ -13,17 +13,16 @@ Run this ONCE before distributing the node package.
 import os
 import sys
 import time
-from ramanujan.LHSHashTable import LHSHashTable
-from ramanujan.constants import g_const_dict
+from modules.continued_fractions.LHSHashTable import LHSHashTable
+from modules.continued_fractions.targets import g_const_dict
 
 def main():
     print("==================================================")
     print("   Seeding Euler-Mascheroni DB (LHS Hash Table)   ")
     print("==================================================\n")
     
-    # Place it directly in the client folder or repo root depending on execution path
-    # ramanujan_client code expects it in its CWD, so let's put it in the root for now
-    dest_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'ramanujan_client', 'euler_mascheroni.db'))
+    # Place it strictly in the global repository root matching V3 framework mechanics
+    dest_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'euler_mascheroni.db'))
     
     if os.path.exists(dest_path):
         print(f"[*] Database already exists at: {dest_path}")
