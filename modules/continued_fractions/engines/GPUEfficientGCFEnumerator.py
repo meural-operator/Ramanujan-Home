@@ -13,14 +13,17 @@ from modules.continued_fractions.utils.mobius import EfficientGCF
 from modules.continued_fractions.targets import g_N_initial_search_terms, g_N_verify_terms, g_N_verify_compare_length
 
 # Module-level worker function required for ProcessPool serialization
-def _cpu_verify_worker(match_obj, lhs_possibilities, s_name_path):
+from modules.continued_fractions.utils.utils import get_series_items_from_iter
+
+def _cpu_verify_worker(match_obj, lhs_possibilities, s_name_path, poly_domains):
     """
     Hyper-precision mpmath verification task executed completely independently in a secondary Process.
     """
     with mpmath.workdps(g_N_verify_terms * 2): # Run CPU verify at hyper-precision
         # Re-initialize isolated GCF structure
-        an = EfficientGCFEnumerator.create_an_series(match_obj.rhs_an_poly, g_N_verify_terms)
-        bn = EfficientGCFEnumerator.create_bn_series(match_obj.rhs_bn_poly, g_N_verify_terms)
+        a_iterator_func, b_iterator_func = poly_domains.get_calculation_method()
+        an = get_series_items_from_iter(a_iterator_func, match_obj.rhs_an_poly, g_N_verify_terms)
+        bn = get_series_items_from_iter(b_iterator_func, match_obj.rhs_bn_poly, g_N_verify_terms)
         gcf = EfficientGCF(an, bn)
         rhs_str = mpmath.nstr(gcf.evaluate(), g_N_verify_compare_length)
         
@@ -227,7 +230,7 @@ class GPUEfficientGCFEnumerator(EfficientGCFEnumerator):
                             raw_hits.append(match)
                             
                             # Submit task to isolated CPU process instead of Threadpool to shatter GIL
-                            future = executor.submit(_cpu_verify_worker, match, tbl_dict, tbl_file)
+                            future = executor.submit(_cpu_verify_worker, match, tbl_dict, tbl_file, self.poly_domains)
                             futures.append(future)
                             pbar_worker.total += 1
                             pbar_worker.refresh()
