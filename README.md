@@ -22,6 +22,7 @@ A globally distributed, GPU-accelerated computing framework that orchestrates **
 | **Resilient Edge Caching** | Local `sqlite3` buffering ensures verified discoveries and compute progress survive hardware or network disruptions. |
 | **Plug-and-Play Deployment** | Automated bootstrapping handles environment isolation, dependencies, and cloud authentication for immediate compute participation. |
 | **Research-Grade Training** | Full MLOps individual training suite with Curriculum PPO and TensorBoard integration for heuristic refinement. |
+| **Pre-Trained AI Agents** | Optimized AlphaTensor MCTS weights (`em_mcts.pt`) included—achieving 400+ reward on Euler-Mascheroni convergence targets for immediate high-performance search. |
 
 ---
 
