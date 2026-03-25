@@ -60,6 +60,10 @@ if not exist "%USERPROFILE%\.param_env\Scripts\python.exe" (
     )
 )
 
+:: 4b. Ensure all critical dependencies are present (runs every startup)
+echo [*] Verifying critical dependencies...
+"%USERPROFILE%\.param_env\Scripts\pip.exe" install --quiet pybloom_live ortools pyrebase4 mpmath sympy tqdm requests
+
 :: 5. Generate Target Math Database if Missing
 if not exist "..\euler_mascheroni.db" (
     echo [*] Generating Local LHS Verification Database ^(One-time math setup, takes ~10s^)...
