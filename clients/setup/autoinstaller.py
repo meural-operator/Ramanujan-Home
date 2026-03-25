@@ -86,7 +86,7 @@ def main():
     
     # Creates an isolated compute domain located functionally at the root of the User Profile
     # This purposefully overrides standard logic to natively bypass the notorious Windows 260 character MAX_PATH API limitation
-    env_dir = os.path.abspath(os.path.join(os.path.expanduser("~"), ".ramanujan_env"))
+    env_dir = os.path.abspath(os.path.join(os.path.expanduser("~"), ".param_env"))
     
     gpu_available = has_nvidia_gpu()
     
@@ -98,7 +98,7 @@ def main():
     print("==================================================")
     print(" Installation Complete! ")
     print(" You can now run the distributed node by executing: ")
-    print(f" {python_exe} param_client.py")
+    print(f" {python_exe} edge_node.py")
     print("==================================================")
 
 if __name__ == "__main__":
