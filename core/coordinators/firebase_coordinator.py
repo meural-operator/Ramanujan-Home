@@ -106,8 +106,8 @@ class FirebaseCoordinator(NetworkCoordinator):
                 print(f"[*] Problem '{self.problem_name}' status is '{status}'. Stopping.")
                 return None
                 
-            # Enforce massive compute blocks to prevent GPU pipeline starvation
-            step_size = max(cursor.get('step_size', 40), 40)
+            # Enforce dynamic compute blocks matched directly to this node's VRAM
+            step_size = self._calculate_dynamic_step_size(cursor.get('degree', 2))
             a_pos = cursor.get('current_a_pos', 0)
             b_pos = cursor.get('current_b_pos', 0)
             
@@ -151,6 +151,31 @@ class FirebaseCoordinator(NetworkCoordinator):
                 return json.loads(response.read().decode())
         except Exception:
             return None
+
+    def _calculate_dynamic_step_size(self, degree: int) -> int:
+        """
+        Calculates the optimal mathematical Cartesian block traversal size
+        based strictly on the host Node's physical VRAM capacity.
+        Ensures a heterogeneous mix of laptops and datacenter GPUs can coexist.
+        """
+        try:
+            import torch
+            if torch.cuda.is_available():
+                free_mem, _ = torch.cuda.mem_get_info()
+            else:
+                free_mem = 4 * (1024**3)  # Fallback to 4GB generic baseline
+        except ImportError:
+            free_mem = 4 * (1024**3)
+            
+        usable_gb = free_mem / (1024**3)
+        
+        # Heuristic mapping: 
+        # 20GB GPU -> 40 step size (~4.7 Billion combinations prior to AI prune)
+        # 4GB GPU/CPU -> ~24 step size (~191 Million combinations prior to AI prune)
+        ideal_step = int(20 + (usable_gb / 20.0) * 20)
+        
+        # Mathematical DOF clamping
+        return max(10, min(60, ideal_step))
 
     # ─────────────────────────────────────────────────────────────────────
     # Results Submission (problem-namespaced + attribution)
