@@ -219,7 +219,7 @@ python edge_node.py
 > ✅ = Currently implemented &nbsp;&nbsp; 🔮 = Planned / Future extension
 
 ```text
-param/
+Ramanujan-Home/
 │
 ├── core/                                        # ✅ Universal Framework (problem-agnostic)
 │   ├── __init__.py
@@ -314,7 +314,8 @@ param/
 │   ├── train_rl_em.py
 │   ├── euler_mascheroni_ai_search.py
 │   ├── euler_mascheroni_research_grade.py
-│   ├── reset_cursor.py
+│   ├── reset_v2_cursor.py
+│   ├── seed_firebase_work.py
 │   ├── multiprocessing_example.py
 │   ├── zeta3_fr_results.py
 │   ├── zeta3_infinite_family.py
@@ -338,7 +339,8 @@ param/
 │
 ├── README.md
 ├── CHANGELOG.md
-└── requirements.txt
+├── requirements.txt
+└── setup.py
 ```
 
 ---
@@ -348,7 +350,7 @@ param/
 The Firebase Realtime Database is **problem-namespaced** — multiple scientific problems run on the same cluster simultaneously without schema changes.
 
 ```text
-param/
+Ramanujan-Home/
 │
 ├── nodes/                              ← ONE entry per volunteer (no duplication)
 │   └── {node_id}/
