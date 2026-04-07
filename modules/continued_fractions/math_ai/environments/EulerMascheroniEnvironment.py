@@ -9,25 +9,25 @@ This environment shapes the reward to:
   1. Reward digit-accuracy (primary signal)
   2. Bonus for *improving* convergence rate step-over-step (shaped exploration reward)
   3. Numerical overflow guard (early termination with penalty)
-  4. Normalized state observation for stable neural network input
+  4. Normalized state observation for stable neural network input (inherited from base)
 """
 import math
 import mpmath
 import numpy as np
 from typing import Tuple, Dict, Any
 
-from .AbstractRLEnvironment import AbstractRLEnvironment
+from .GCFRewardEnvironment import GCFRewardEnvironment
 
 # High-precision Euler-Mascheroni constant (mpmath's reference value)
 _GAMMA = float(mpmath.euler)  # 0.5772156649015328606...
 
 
-class EulerMascheroniEnvironment(AbstractRLEnvironment):
+class EulerMascheroniEnvironment(GCFRewardEnvironment):
     """
     Reinforcement learning environment for discovering GCF representations of γ.
     
     State:
-        A 4-tuple of normalized GCF numerator/denominator evolution:
+        Inherited from GCFRewardEnvironment._get_obs():
         [sign(prev_q)*log1p(|prev_q|), sign(prev_p)*log1p(|prev_p|),
          sign(q)*log1p(|q|),           sign(p)*log1p(|p|)]
         Log-scaling prevents float overflow while preserving magnitude ordering.
@@ -47,30 +47,19 @@ class EulerMascheroniEnvironment(AbstractRLEnvironment):
     target_val: float = _GAMMA
 
     def __init__(self, max_steps: int = 100):
-        self.max_steps = max_steps
-        self.target_value = _GAMMA
-        self.reset()
+        # Initialize base with γ as target — p=0.0 is the standard GCF initial condition
+        super().__init__(target_value=_GAMMA, max_steps=max_steps)
+        self.best_digits = 0.0
 
     def reset(self) -> np.ndarray:
-        self.current_step = 0
-        self.prev_q = 0.0
-        self.prev_p = 1.0
-        self.q = 1.0
-        self.p = _GAMMA  # warm-start: first GCF term is γ itself
+        obs = super().reset()
+        # Standard GCF initial condition: p=0.0, q=1.0
+        # The agent must navigate the recurrence to converge toward γ from neutral start.
+        # NOTE: Previous versions used self.p = _GAMMA (warm-start) which gave the agent
+        # a free maximum-precision signal at step 0, inflating reported rewards.
+        # Checkpoints trained with warm-start (schema v1) are incompatible.
         self.best_digits = 0.0
-        return self._get_obs()
-
-    def _safe_log_norm(self, x: float) -> float:
-        """Sign-preserving log1p normalization that handles extreme values."""
-        return math.copysign(math.log1p(abs(x)), x)
-
-    def _get_obs(self) -> np.ndarray:
-        return np.array([
-            self._safe_log_norm(self.prev_q),
-            self._safe_log_norm(self.prev_p),
-            self._safe_log_norm(self.q),
-            self._safe_log_norm(self.p),
-        ], dtype=np.float32)
+        return obs
 
     def calculate_reward(self, p: float, q: float) -> float:
         """Primary reward: log10(1 / |γ - p/q|), i.e. digits of precision."""
@@ -131,3 +120,14 @@ class EulerMascheroniEnvironment(AbstractRLEnvironment):
             "digits_accurate": primary_reward,
             "improvement_bonus": improvement_bonus,
         }
+
+    def get_state(self) -> Dict[str, Any]:
+        """Serialize full state including best_digits for MCTS snapshots."""
+        state = super().get_state()
+        state['best_digits'] = self.best_digits
+        return state
+
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """Restore state including best_digits."""
+        super().set_state(state)
+        self.best_digits = state.get('best_digits', 0.0)

@@ -108,8 +108,10 @@ class GPUEfficientGCFEnumerator(EfficientGCFEnumerator):
             return []
 
         # Move sequences to Tensor
-        a_tensor = torch.tensor(a_series_list, dtype=torch.float64, device=self.device) # (N_a, N_terms)
-        b_tensor = torch.tensor(b_series_list, dtype=torch.float64, device=self.device) # (N_b, N_terms)
+        # Use float32 for GPU sweep — Ada Lovelace delivers 19.2 TFLOPS FP32 vs ~0.6 TFLOPS FP64.
+        # The CPU mpmath verification (1000-digit precision) catches any false positives.
+        a_tensor = torch.tensor(a_series_list, dtype=torch.float32, device=self.device) # (N_a, N_terms)
+        b_tensor = torch.tensor(b_series_list, dtype=torch.float32, device=self.device) # (N_b, N_terms)
         
         N_a = a_tensor.shape[0]
         N_b = b_tensor.shape[0]
@@ -133,7 +135,10 @@ class GPUEfficientGCFEnumerator(EfficientGCFEnumerator):
         tbl_dict = self.hash_table.lhs_possibilities if self.hash_table.lhs_possibilities is not None else None
         tbl_file = getattr(self.hash_table, 's_name', None)
         
-        key_factor = round(1 / self.threshold)
+        # Float32 sweep uses a coarser threshold (1e-6) — sufficient for hash bucketing.
+        # The original self.threshold (e.g. 1e-10) is too tight for float32's ~7-digit precision.
+        gpu_threshold = max(self.threshold, 1e-6)
+        key_factor = round(1 / gpu_threshold)
         processed_combinations = 0
         log_start_time = time()
         
@@ -172,11 +177,11 @@ class GPUEfficientGCFEnumerator(EfficientGCFEnumerator):
             # Target 80% of TRUE free memory
             usable_vram_bytes = free_mem * 0.8
             
-            # Profile the algorithm's actual byte-cost per equation:
-            # a_expanded, b_expanded tensors: 8 bytes * N_terms * 2
-            # internal registers (q, p, prev_q, prev_p): 8 bytes * 4 = 32 bytes
-            # masking & conditional tensors during hits: ~100 bytes
-            bytes_per_combo = (16 * N_terms) + 132
+            # Profile the algorithm's actual byte-cost per equation (float32):
+            # a_expanded, b_expanded tensors: 4 bytes * N_terms * 2
+            # internal registers (q, p, prev_q, prev_p): 4 bytes * 4 = 16 bytes
+            # masking & conditional tensors during hits: ~52 bytes
+            bytes_per_combo = (8 * N_terms) + 68
             
             max_safe_bsz = int(usable_vram_bytes / bytes_per_combo)
             
@@ -217,9 +222,9 @@ class GPUEfficientGCFEnumerator(EfficientGCFEnumerator):
                     
                     bsz = a_expanded.shape[0]
                     
-                    prev_q = torch.zeros(bsz, dtype=torch.float64, device=self.device)
-                    q = torch.ones(bsz, dtype=torch.float64, device=self.device)
-                    prev_p = torch.ones(bsz, dtype=torch.float64, device=self.device)
+                    prev_q = torch.zeros(bsz, dtype=torch.float32, device=self.device)
+                    q = torch.ones(bsz, dtype=torch.float32, device=self.device)
+                    prev_p = torch.ones(bsz, dtype=torch.float32, device=self.device)
                     p = a_expanded[:, 0].clone()
                     
                     # Batched convergent evaluation

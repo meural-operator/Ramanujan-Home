@@ -6,6 +6,7 @@ Implements a proper MCTS tree with:
   - UCB-1 selection with PUCT formula (AlphaZero style)
   - Dirichlet noise injection at root for exploration diversity
   - Global min-max Q normalization for numerically stable UCB
+  - O(1) state restoration via environment snapshots (no path replay)
   - Policy improvement: action selected proportionally to visit count distribution
   - Integration with PPO-trained ActorCriticGCFNetwork for prior probabilities and value estimates
 """
@@ -23,6 +24,7 @@ class MCTSNode:
     A single node in the MCTS tree.
     Stores:
       - state: the environment observation at this node
+      - env_state: serialized environment snapshot for O(1) restoration
       - parent / action_from_parent: tree structure
       - N: visit count
       - W: cumulative value (sum of backed-up values)
@@ -30,18 +32,20 @@ class MCTSNode:
       - P: prior probability from the neural network (for UCB)
       - children: dict mapping action_key → MCTSNode
     """
-    __slots__ = ('state', 'parent', 'action_from_parent',
+    __slots__ = ('state', 'env_state', 'parent', 'action_from_parent',
                  'N', 'W', 'Q', 'P', 'children', 'is_terminal')
 
     def __init__(self, state: np.ndarray, parent: Optional['MCTSNode'] = None,
-                 action_from_parent: Optional[np.ndarray] = None, prior: float = 1.0):
+                 action_from_parent: Optional[np.ndarray] = None, prior: float = 1.0,
+                 env_state: Optional[dict] = None):
         self.state = state
+        self.env_state = env_state          # Snapshot for O(1) state restoration
         self.parent = parent
         self.action_from_parent = action_from_parent
         self.N: int = 0
         self.W: float = 0.0
         self.Q: float = 0.0
-        self.P: float = prior       # prior probability from policy network
+        self.P: float = prior               # prior probability from policy network
         self.children: Dict[int, 'MCTSNode'] = {}
         self.is_terminal: bool = False
 
@@ -64,6 +68,12 @@ class AlphaTensorMCTS:
       2. EXPAND: generate n_actions candidate actions from the neural policy prior
       3. EVALUATE: use critic to estimate V(leaf) without rollout (zero-latency)
       4. BACKUP: propagate V up through visited nodes
+    
+    State Management:
+      Each MCTSNode stores an env_state snapshot captured at expansion time.
+      This eliminates the O(depth × N_simulations) path replay overhead — 
+      restoring a node's state is a single O(1) set_state() call instead of
+      replaying every ancestor action from root.
     
     After `num_simulations` iterations, the visit count distribution at the root
     defines the improved policy π̂(a|s_root) used for PPO training targets.
@@ -150,7 +160,10 @@ class AlphaTensorMCTS:
         return actions, priors, value
 
     def _expand(self, node: MCTSNode):
-        """Expand a leaf node: generate n_actions children using policy network."""
+        """
+        Expand a leaf node: generate n_actions children using policy network.
+        Each child stores the env state snapshot for O(1) restoration.
+        """
         actions, priors, value = self._get_policy_value(node.state)
 
         # Inject Dirichlet noise at root for exploration
@@ -158,9 +171,26 @@ class AlphaTensorMCTS:
             noise = np.random.dirichlet([self.dirichlet_alpha] * self.n_actions)
             priors = (1 - self.dirichlet_epsilon) * priors + self.dirichlet_epsilon * noise
 
+        # Restore environment to this node's state before expanding
+        if node.env_state is not None:
+            self.env.set_state(node.env_state)
+
         for i, (action, prior) in enumerate(zip(actions, priors)):
-            child = MCTSNode(state=np.array(node.state, dtype=np.float32), parent=node,
-                             action_from_parent=action, prior=float(prior))
+            # Step the environment to get the child's state
+            if node.env_state is not None:
+                self.env.set_state(node.env_state)
+            
+            obs, reward, done, _ = self.env.step(action)
+            child_env_state = self.env.get_state()
+            
+            child = MCTSNode(
+                state=np.array(obs, dtype=np.float32),
+                parent=node,
+                action_from_parent=action,
+                prior=float(prior),
+                env_state=child_env_state,
+            )
+            child.is_terminal = done
             node.children[i] = child
 
         return value
@@ -177,35 +207,6 @@ class AlphaTensorMCTS:
                 self._q_max = current.Q
             current = current.parent
 
-    def _simulate_to_leaf(self, node: MCTSNode, initial_state: np.ndarray) -> Tuple[MCTSNode, float]:
-        """
-        Select a path through the tree, optionally stepping the environment.
-        For efficiency, we use the CRITIC for value estimation (no random rollout).
-        Returns the reached leaf node and the neural value estimate.
-        """
-        # Re-run environment to match the node's trajectory
-        # For efficiency in the continuous domain, we step the env along the path
-        path = []
-        current = node
-        while current.parent is not None:
-            path.append(current.action_from_parent)
-            current = current.parent
-        path.reverse()
-
-        self.env.reset()
-        obs = np.array(initial_state, dtype=np.float32)
-        for action in path:
-            obs, _, done, _ = self.env.step(action)
-            if done:
-                break
-
-        # The leaf's "state" is now the current env observation
-        node.state = np.array(obs, dtype=np.float32)
-
-        # Get neural value estimate (no random rollout needed — critic IS the value function)
-        _, _, value = self._get_policy_value(obs)
-        return node, value
-
     def search(self, initial_state: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
         Execute num_simulations MCTS simulations from the given initial state.
@@ -219,8 +220,15 @@ class AlphaTensorMCTS:
         self._q_min = float('inf')
         self._q_max = float('-inf')
 
-        # Build root node
-        root = MCTSNode(state=np.array(initial_state, dtype=np.float32))
+        # Reset environment and capture root state snapshot
+        self.env.reset()
+        root_env_state = self.env.get_state()
+
+        # Build root node with env state snapshot
+        root = MCTSNode(
+            state=np.array(initial_state, dtype=np.float32),
+            env_state=root_env_state,
+        )
 
         for _ in range(self.num_simulations):
             # 1. SELECT
@@ -228,19 +236,22 @@ class AlphaTensorMCTS:
 
             # 2. EXPAND (if not terminal)
             if not leaf.is_terminal:
-                self._expand(leaf)
-                # After expansion, select the first child for evaluation
+                value = self._expand(leaf)
+                
+                # After expansion, evaluate the first child
                 if leaf.children:
                     first_child = list(leaf.children.values())[0]
-                    first_child.state = np.array(leaf.state, dtype=np.float32)
-                    # Quick env step to get child state
-                    obs, reward, done, _ = self.env.step(first_child.action_from_parent)
-                    first_child.state = np.array(obs, dtype=np.float32)
-                    first_child.is_terminal = done
-                    # 3. EVALUATE via critic
-                    _, _, value = self._get_policy_value(obs)
+                    
+                    # Get neural value estimate for this child
+                    _, _, child_value = self._get_policy_value(first_child.state)
+                    
+                    # 3. EVALUATE: combine critic value with immediate reward
+                    # Restore env to child state to get reward
+                    self.env.set_state(first_child.env_state)
+                    reward = self.env.calculate_reward(self.env.p, self.env.q)
+                    
                     # 4. BACKUP
-                    self._backup(first_child, value + reward * 0.01)
+                    self._backup(first_child, child_value + reward * 0.01)
                 else:
                     self._backup(leaf, leaf.Q)
             else:
@@ -297,6 +308,3 @@ class AlphaTensorMCTS:
             new_b_range.append([max(lo, mid - b_radius), min(hi, mid + b_radius)])
 
         return new_a_range, new_b_range
-
-    # Type annotation helper
-    from typing import List

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Any
+from typing import Tuple, Any, Dict
+
 
 class AbstractRLEnvironment(ABC):
     """
@@ -36,5 +37,29 @@ class AbstractRLEnvironment(ABC):
     def calculate_reward(self, current_state: Any) -> float:
         """
         Specific mathematical logic defining the reward landscape.
+        """
+        pass
+
+    @abstractmethod
+    def get_state(self) -> Dict[str, Any]:
+        """
+        Serialize the full internal state for MCTS node snapshots.
+        Must capture all mutable state needed to resume from this exact point.
+        Used by AlphaTensorMCTS to avoid O(depth) path replay.
+        
+        Returns:
+            A dict containing all environment state variables.
+        """
+        pass
+
+    @abstractmethod
+    def set_state(self, state: Dict[str, Any]) -> None:
+        """
+        Restore environment to a previously captured snapshot.
+        After set_state(s), the environment must behave identically
+        to when get_state() returned s.
+        
+        Args:
+            state: A dict previously returned by get_state().
         """
         pass

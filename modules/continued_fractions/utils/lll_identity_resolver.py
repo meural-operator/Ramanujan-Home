@@ -24,8 +24,11 @@ Usage:
     from modules.continued_fractions.utils.lll_identity_resolver import resolve_identity
     result = resolve_identity(decimal_value, basis_constants={'gamma', 'pi', 'log2', 'zeta2'})
 """
+import logging
 import mpmath
 from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -39,16 +42,21 @@ def _build_basis(names: set, precision: int) -> Dict[str, Any]:
     """
     mpmath.mp.dps = precision
     _registry = {
-        'gamma':  mpmath.euler,          # Euler-Mascheroni γ ≈ 0.5772...
-        'pi':     mpmath.pi,             # π
-        'log2':   mpmath.log(2),         # ln(2)
-        'log3':   mpmath.log(3),         # ln(3)
-        'zeta2':  mpmath.zeta(2),        # π²/6
-        'zeta3':  mpmath.apery,          # Apéry's constant ζ(3)
-        'sqrt2':  mpmath.sqrt(2),        # √2
-        'sqrt5':  mpmath.sqrt(5),        # √5
-        'e':      mpmath.e,              # Euler's number e
-        '1':      mpmath.mpf(1),         # rational intercept anchor
+        'gamma':   mpmath.euler,          # Euler-Mascheroni γ ≈ 0.5772...
+        'pi':      mpmath.pi,             # π
+        'log2':    mpmath.log(2),          # ln(2)
+        'log3':    mpmath.log(3),          # ln(3)
+        'zeta2':   mpmath.zeta(2),         # π²/6
+        'zeta3':   mpmath.apery,           # Apéry's constant ζ(3)
+        'zeta5':   mpmath.zeta(5),         # ζ(5) — primary GPU campaign target
+        'zeta7':   mpmath.zeta(7),         # ζ(7) — primary GPU campaign target
+        'catalan': mpmath.catalan,         # Catalan's constant G ≈ 0.9159...
+        'sqrt2':   mpmath.sqrt(2),         # √2
+        'sqrt3':   mpmath.sqrt(3),         # √3
+        'sqrt5':   mpmath.sqrt(5),         # √5
+        'e':       mpmath.e,               # Euler's number e
+        'phi':     (1 + mpmath.sqrt(5))/2, # Golden ratio φ
+        '1':       mpmath.mpf(1),          # rational intercept anchor
     }
     return {k: v for k, v in _registry.items() if k in names}
 
@@ -67,8 +75,8 @@ def resolve_identity(
     Args:
         value:              The confirmed high-precision GCF output (float or mpf)
         basis_constants:    Set of constant names to search over.
-                            Defaults to the full Euler-Mascheroni relevant basis:
-                            {gamma, pi, log2, zeta2, zeta3, 1}
+                            Defaults to a comprehensive basis covering all
+                            implemented search domains.
         max_denominator:    Maximum integer coefficient magnitude to try
         precision:          mpmath decimal precision for internal arithmetic
         tolerance:          Residual error threshold for accepting a match
@@ -82,7 +90,12 @@ def resolve_identity(
           'method'     : str  — which solver found the match ('pslq' or 'mpmath_identify')
     """
     if basis_constants is None:
-        basis_constants = {'gamma', 'pi', 'log2', 'zeta2', '1'}
+        # Full basis covering all implemented search domains
+        basis_constants = {
+            'gamma', 'pi', 'log2', 'log3',
+            'zeta2', 'zeta3', 'zeta5', 'zeta7',
+            'catalan', '1',
+        }
 
     mpmath.mp.dps = precision
     # Preserve full precision if caller passes an mpf; float inputs will be limited to ~15 digits
@@ -101,12 +114,30 @@ def resolve_identity(
     try:
         ident = mpmath.identify(val, tol=tolerance)
         if ident:
-            result['found'] = True
-            result['expression'] = str(ident)
-            result['method'] = 'mpmath_identify'
-            result['residual'] = float(abs(val - mpmath.mpf(eval(ident, {'__builtins__': {}},
-                                                                  _mpmath_safe_env()))))
-            return result
+            safe_env = _mpmath_safe_env()
+            try:
+                reconstructed = eval(ident, {'__builtins__': {}}, safe_env)
+                residual = float(abs(val - mpmath.mpf(reconstructed)))
+                result['found'] = True
+                result['expression'] = str(ident)
+                result['method'] = 'mpmath_identify'
+                result['residual'] = residual
+                return result
+            except NameError as e:
+                # mpmath.identify() returned a token not in our safe_env
+                logger.warning(
+                    f"mpmath.identify() returned expression '{ident}' containing "
+                    f"unknown token: {e}. Expression discarded — consider extending "
+                    f"_mpmath_safe_env() with the missing function/constant."
+                )
+            except SyntaxError as e:
+                logger.warning(
+                    f"mpmath.identify() returned unparseable expression '{ident}': {e}"
+                )
+            except (TypeError, ValueError, ZeroDivisionError) as e:
+                logger.warning(
+                    f"mpmath.identify() expression '{ident}' failed evaluation: {e}"
+                )
     except Exception:
         pass
 
@@ -152,16 +183,46 @@ def resolve_identity(
 
 
 def _mpmath_safe_env() -> dict:
-    """Safe evaluation namespace for mpmath.identify() string output."""
+    """
+    Safe evaluation namespace for mpmath.identify() string output.
+    
+    mpmath.identify() can return expressions involving any of mpmath's built-in
+    constants and functions. This dict must cover all plausible tokens to prevent
+    silent NameError discards.
+    """
     return {
+        # Constants
         'pi': mpmath.pi,
         'e': mpmath.e,
         'euler': mpmath.euler,
+        'gamma': mpmath.euler,
+        'apery': mpmath.apery,
+        'catalan': mpmath.catalan,
+        'khinchin': mpmath.khinchin,
+        'glaisher': mpmath.glaisher,
+        'mertens': mpmath.mertens,
+        'twinprime': mpmath.twinprime,
+        'phi': (1 + mpmath.sqrt(5)) / 2,
+        
+        # Functions commonly appearing in identify() output
         'log': mpmath.log,
         'sqrt': mpmath.sqrt,
+        'cbrt': mpmath.cbrt,
+        'exp': mpmath.exp,
         'zeta': mpmath.zeta,
-        'apery': mpmath.apery,
-        'gamma': mpmath.euler,
+        'power': mpmath.power,
+        'root': mpmath.root,
+        'cos': mpmath.cos,
+        'sin': mpmath.sin,
+        'tan': mpmath.tan,
+        'atan': mpmath.atan,
+        'frac': mpmath.frac,
+        'mpf': mpmath.mpf,
+        'mpc': mpmath.mpc,
+        
+        # Arithmetic helpers that identify() may emit
+        'sign': mpmath.sign,
+        'fabs': mpmath.fabs,
     }
 
 
@@ -190,7 +251,7 @@ def format_identity_report(gcf_hit: dict, identity: dict) -> str:
     if identity['found']:
         lines += [
             f"  Closed-Form Identity (via {identity['method']}):",
-            f"    γ = {identity['expression']}",
+            f"    value = {identity['expression']}",
             f"  Verification Residual: {identity['residual']:.2e}",
         ]
         if identity['coefficients']:
